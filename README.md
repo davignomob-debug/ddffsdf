@@ -154,7 +154,7 @@ end
 local LabelMut = Instance.new("TextLabel", Main)
 LabelMut.Size = UDim2.new(0.92, 0, 0, 20)
 LabelMut.Position = UDim2.new(0.04, 0, 0, 262)
-LabelMut.Text = "MUTAÇÕES:"
+LabelMut.Text = "MUTAÇÕES (opcional):"
 LabelMut.TextColor3 = Color3.fromRGB(0, 255, 127)
 LabelMut.BackgroundTransparency = 1
 LabelMut.Font = Enum.Font.GothamBold
@@ -177,6 +177,14 @@ local MutCores = {
     ["Diamante"] = Color3.fromRGB(100, 200, 255),
     ["Rainbow"] = Color3.fromRGB(255, 100, 200),
     ["Galaxy"] = Color3.fromRGB(180, 100, 255),
+}
+
+-- nomes em portugues e ingles pra garantir
+local MutTraducao = {
+    ["ouro"] = {"ouro", "gold"},
+    ["diamante"] = {"diamante", "diamond"},
+    ["rainbow"] = {"rainbow"},
+    ["galaxy"] = {"galaxy"},
 }
 
 for _, name in ipairs(Mutacoes) do
@@ -228,23 +236,28 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- // BUSCA PROMPT
+-- // BUSCA PROMPT COM FILTRO DE MUTAÇÃO
 local function FindPromptDoAlvo()
     for _, obj in pairs(workspace:GetDescendants()) do
         if obj:IsA("ProximityPrompt") then
             local nomeObj = (obj.Parent and obj.Parent.Name or ""):lower()
             local textoPrompt = (obj.ObjectText or ""):lower()
+            local texto = nomeObj .. " " .. textoPrompt
+
             for alvo in pairs(AlvosSelecionados) do
-                if nomeObj:find(alvo) or textoPrompt:find(alvo) then
-                    -- checa mutação se tiver selecionada
-                    if next(MutacoesSelecionadas) ~= nil then
-                        for mut in pairs(MutacoesSelecionadas) do
-                            if nomeObj:find(mut) or textoPrompt:find(mut) then
+                if texto:find(alvo) then
+                    -- se nenhuma mutação selecionada, pega qualquer um
+                    if next(MutacoesSelecionadas) == nil then
+                        return obj
+                    end
+                    -- checa se tem a mutação no texto
+                    for mut in pairs(MutacoesSelecionadas) do
+                        local variantes = MutTraducao[mut] or {mut}
+                        for _, v in ipairs(variantes) do
+                            if texto:find(v) then
                                 return obj
                             end
                         end
-                    else
-                        return obj
                     end
                 end
             end
