@@ -6,6 +6,11 @@ local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("C
 sg.Name = "NovoScript"
 
 local Minimizado = false
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPos = nil
+local dragTarget = nil
 
 -- // FRAME PRINCIPAL
 local Main = Instance.new("Frame", sg)
@@ -19,9 +24,14 @@ local stroke = Instance.new("UIStroke", Main)
 stroke.Color = Color3.fromRGB(0, 255, 127)
 stroke.Thickness = 2
 
+-- // TOPBAR (area de arrastar)
+local TopBar = Instance.new("Frame", Main)
+TopBar.Size = UDim2.new(1, 0, 0, 45)
+TopBar.BackgroundTransparency = 1
+
 -- // TÍTULO
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -80, 0, 45)
+local Title = Instance.new("TextLabel", TopBar)
+Title.Size = UDim2.new(1, -80, 1, 0)
 Title.Text = "NOVO SCRIPT"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.BackgroundTransparency = 1
@@ -29,7 +39,7 @@ Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 
 -- // BOTÃO FECHAR
-local CloseBtn = Instance.new("TextButton", Main)
+local CloseBtn = Instance.new("TextButton", TopBar)
 CloseBtn.Size = UDim2.fromOffset(30, 30)
 CloseBtn.Position = UDim2.new(1, -35, 0, 7)
 CloseBtn.Text = "X"
@@ -51,7 +61,7 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 -- // BOTÃO MINIMIZAR
-local MinBtn = Instance.new("TextButton", Main)
+local MinBtn = Instance.new("TextButton", TopBar)
 MinBtn.Size = UDim2.fromOffset(30, 30)
 MinBtn.Position = UDim2.new(1, -70, 0, 7)
 MinBtn.Text = "-"
@@ -70,11 +80,15 @@ MinBtn.MouseLeave:Connect(function()
 end)
 
 -- // FRAME MINIMIZADO
-local Mini = Instance.new("Frame", sg)
+local Mini = Instance.new("TextButton", sg)
 Mini.Size = UDim2.fromOffset(50, 50)
 Mini.Position = Main.Position
 Mini.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Mini.BorderSizePixel = 0
+Mini.Text = "▣"
+Mini.TextColor3 = Color3.fromRGB(0, 255, 127)
+Mini.Font = Enum.Font.GothamBold
+Mini.TextSize = 22
 Mini.Visible = false
 Instance.new("UICorner", Mini).CornerRadius = UDim.new(0, 12)
 
@@ -82,15 +96,7 @@ local miniStroke = Instance.new("UIStroke", Mini)
 miniStroke.Color = Color3.fromRGB(0, 255, 127)
 miniStroke.Thickness = 2
 
-local MiniLabel = Instance.new("TextLabel", Mini)
-MiniLabel.Size = UDim2.new(1, 0, 1, 0)
-MiniLabel.Text = "▣"
-MiniLabel.TextColor3 = Color3.fromRGB(0, 255, 127)
-MiniLabel.BackgroundTransparency = 1
-MiniLabel.Font = Enum.Font.GothamBold
-MiniLabel.TextSize = 22
-
--- // CONTEÚDO (esconde ao minimizar)
+-- // CONTEÚDO
 local Content = Instance.new("Frame", Main)
 Content.Size = UDim2.new(1, 0, 1, -50)
 Content.Position = UDim2.new(0, 0, 0, 50)
@@ -114,11 +120,8 @@ end)
 Btn.MouseLeave:Connect(function()
     Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 end)
-Btn.MouseButton1Click:Connect(function()
-    -- não faz nada
-end)
 
--- // LÓGICA MINIMIZAR
+-- // MINIMIZAR
 MinBtn.MouseButton1Click:Connect(function()
     Minimizado = true
     Mini.Position = Main.Position
@@ -126,48 +129,60 @@ MinBtn.MouseButton1Click:Connect(function()
     Mini.Visible = true
 end)
 
-MiniLabel.MouseButton1Click = nil
-Mini.InputBegan:Connect(function(input)
+-- // RESTAURAR
+Mini.MouseButton1Click:Connect(function()
+    Minimizado = false
+    Main.Position = Mini.Position
+    Main.Visible = true
+    Mini.Visible = false
+end)
+
+-- // ARRASTAR - TOPBAR
+TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        -- clique duplo pra restaurar, ou só clique
-        Minimizado = false
-        Main.Position = Mini.Position
-        Main.Visible = true
-        Mini.Visible = false
+        dragging = true
+        dragTarget = Main
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+TopBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
     end
 end)
 
--- // ARRASTAR PRINCIPAL
-local dragging, dragInput, dragStart, startPos
+-- // ARRASTAR - MINI
+Mini.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragTarget = Mini
+        dragStart = input.Position
+        startPos = Mini.Position
+    end
+end)
+Mini.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
 
-local function setupDrag(frame)
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
-    end)
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-end
-
-setupDrag(Main)
-setupDrag(Mini)
-
+-- // MOVER
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
+    if input == dragInput and dragging and dragTarget then
         local delta = input.Position - dragStart
-        local target = Minimizado and Mini or Main
-        target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        dragTarget.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = false
+        dragTarget = nil
     end
 end)
