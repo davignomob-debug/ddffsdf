@@ -3,19 +3,40 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
 local sg = Instance.new("ScreenGui", (gethui and gethui()) or game:GetService("CoreGui"))
-sg.Name = "NovoScript"
+sg.Name = "AutoFarm_V2"
 
-local Minimizado = false
+local Brainrots = {
+    "Tim Cheese", "LiriliLarila", "Fluri Flura", "Cacto Hipopotamo",
+    "Pipi Potato", "Tric Trac Barabum", "Burbaloni Loliloli", "Boneca Ambalabu",
+    "Trippi Troppi", "Svinina Bombardino", "Bambini Crostini", "Avocadini Guffo",
+    "Bandito Bobrito", "Tatatata Sahur",
+    "Gangster Footera", "Tung Tung Sahur", "Cappuccino Assassino", "Pipi Kiwi",
+    "Orangutini Ananassini", "Talpa Di Fero", "Espresso Signora",
+    "Brr Brr Patapim", "Rhino Toasterino", "Brr Bicus Dicus",
+    "Strawberrelli Flamingelli", "Bananito Delfinito", "Balerina Capucina", "Glorbo Fruttodrillo",
+    "Blueberrinni Octopusini", "Chimpanzini Bananini", "Bombardiro Crocodilo", "Elefanto Cocofanto",
+    "Bombombini Gusini", "Pandaccini Bananini", "Chef Crabracadabra",
+    "Gorillo Watermelondrillo", "Frigo Camelo", "Girafa Celestre",
+    "Ganganzelli Trulala", "Tigroligre Frutonni",
+    "Tralalerodon", "Esok", "La Vaca", "Strawberry",
+    "Capitano Clash Warnini", "Meowl", "Garama", "Madundung"
+}
+
+local Mutacoes = { "Ouro", "Diamante", "Rainbow", "Galaxy" }
+
+local AlvosSelecionados = {}
+local MutacoesSelecionadas = {}
+local FarmAtivo = false
+
 local dragging = false
 local dragInput = nil
 local dragStart = nil
 local startPos = nil
-local dragTarget = nil
 
 -- // FRAME PRINCIPAL
 local Main = Instance.new("Frame", sg)
-Main.Size = UDim2.fromOffset(320, 200)
-Main.Position = UDim2.new(0.5, -160, 0.4, 0)
+Main.Size = UDim2.fromOffset(400, 420)
+Main.Position = UDim2.new(0.5, -200, 0.3, 0)
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
@@ -24,15 +45,15 @@ local stroke = Instance.new("UIStroke", Main)
 stroke.Color = Color3.fromRGB(0, 255, 127)
 stroke.Thickness = 2
 
--- // TOPBAR (area de arrastar)
+-- // TOPBAR
 local TopBar = Instance.new("Frame", Main)
 TopBar.Size = UDim2.new(1, 0, 0, 45)
 TopBar.BackgroundTransparency = 1
 
 -- // TÍTULO
 local Title = Instance.new("TextLabel", TopBar)
-Title.Size = UDim2.new(1, -80, 1, 0)
-Title.Text = "NOVO SCRIPT"
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Text = "AUTO FARM INFINITO"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
@@ -57,91 +78,135 @@ CloseBtn.MouseLeave:Connect(function()
     CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 end)
 CloseBtn.MouseButton1Click:Connect(function()
+    FarmAtivo = false
     sg:Destroy()
 end)
 
--- // BOTÃO MINIMIZAR
-local MinBtn = Instance.new("TextButton", TopBar)
-MinBtn.Size = UDim2.fromOffset(30, 30)
-MinBtn.Position = UDim2.new(1, -70, 0, 7)
-MinBtn.Text = "-"
-MinBtn.TextColor3 = Color3.new(1, 1, 1)
-MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = 20
-MinBtn.BorderSizePixel = 0
-Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 6)
+-- // BOTÃO FARMAR
+local Toggle = Instance.new("TextButton", Main)
+Toggle.Size = UDim2.new(0.92, 0, 0, 42)
+Toggle.Position = UDim2.new(0.04, 0, 0, 50)
+Toggle.Text = "AUTO FARM: OFF"
+Toggle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Toggle.TextColor3 = Color3.new(1, 1, 1)
+Toggle.Font = Enum.Font.GothamBold
+Toggle.TextSize = 17
+Toggle.BorderSizePixel = 0
+Instance.new("UICorner", Toggle)
 
-MinBtn.MouseEnter:Connect(function()
-    MinBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
-end)
-MinBtn.MouseLeave:Connect(function()
-    MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-end)
-
--- // FRAME MINIMIZADO
-local Mini = Instance.new("TextButton", sg)
-Mini.Size = UDim2.fromOffset(50, 50)
-Mini.Position = Main.Position
-Mini.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Mini.BorderSizePixel = 0
-Mini.Text = "▣"
-Mini.TextColor3 = Color3.fromRGB(0, 255, 127)
-Mini.Font = Enum.Font.GothamBold
-Mini.TextSize = 22
-Mini.Visible = false
-Instance.new("UICorner", Mini).CornerRadius = UDim.new(0, 12)
-
-local miniStroke = Instance.new("UIStroke", Mini)
-miniStroke.Color = Color3.fromRGB(0, 255, 127)
-miniStroke.Thickness = 2
-
--- // CONTEÚDO
-local Content = Instance.new("Frame", Main)
-Content.Size = UDim2.new(1, 0, 1, -50)
-Content.Position = UDim2.new(0, 0, 0, 50)
-Content.BackgroundTransparency = 1
-
--- // BOTÃO QUE NÃO FAZ NADA
-local Btn = Instance.new("TextButton", Content)
-Btn.Size = UDim2.new(0.9, 0, 0, 48)
-Btn.Position = UDim2.new(0.05, 0, 0.1, 0)
-Btn.Text = "BOTÃO"
-Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Btn.TextColor3 = Color3.new(1, 1, 1)
-Btn.Font = Enum.Font.GothamBold
-Btn.TextSize = 17
-Btn.BorderSizePixel = 0
-Instance.new("UICorner", Btn)
-
-Btn.MouseEnter:Connect(function()
-    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-end)
-Btn.MouseLeave:Connect(function()
-    Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Toggle.MouseButton1Click:Connect(function()
+    FarmAtivo = not FarmAtivo
+    Toggle.Text = FarmAtivo and "FARMANDO... (ON)" or "AUTO FARM: OFF"
+    Toggle.BackgroundColor3 = FarmAtivo and Color3.fromRGB(0, 100, 50) or Color3.fromRGB(35, 35, 35)
 end)
 
--- // MINIMIZAR
-MinBtn.MouseButton1Click:Connect(function()
-    Minimizado = true
-    Mini.Position = Main.Position
-    Main.Visible = false
-    Mini.Visible = true
-end)
+-- // LABEL BRAINROTS
+local LabelBrainrot = Instance.new("TextLabel", Main)
+LabelBrainrot.Size = UDim2.new(0.92, 0, 0, 20)
+LabelBrainrot.Position = UDim2.new(0.04, 0, 0, 100)
+LabelBrainrot.Text = "BRAINROTS:"
+LabelBrainrot.TextColor3 = Color3.fromRGB(0, 255, 127)
+LabelBrainrot.BackgroundTransparency = 1
+LabelBrainrot.Font = Enum.Font.GothamBold
+LabelBrainrot.TextSize = 13
+LabelBrainrot.TextXAlignment = Enum.TextXAlignment.Left
 
--- // RESTAURAR
-Mini.MouseButton1Click:Connect(function()
-    Minimizado = false
-    Main.Position = Mini.Position
-    Main.Visible = true
-    Mini.Visible = false
-end)
+-- // LISTA BRAINROTS
+local ListBrainrot = Instance.new("ScrollingFrame", Main)
+ListBrainrot.Size = UDim2.new(0.92, 0, 0, 130)
+ListBrainrot.Position = UDim2.new(0.04, 0, 0, 122)
+ListBrainrot.CanvasSize = UDim2.new(0, 0, 0, #Brainrots * 32)
+ListBrainrot.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ListBrainrot.ScrollBarThickness = 4
+ListBrainrot.BorderSizePixel = 0
+Instance.new("UICorner", ListBrainrot)
+Instance.new("UIListLayout", ListBrainrot)
 
--- // ARRASTAR - TOPBAR
+for _, name in ipairs(Brainrots) do
+    local b = Instance.new("TextButton", ListBrainrot)
+    b.Size = UDim2.new(1, 0, 0, 32)
+    b.Text = name
+    b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    b.Font = Enum.Font.Gotham
+    b.TextSize = 14
+    b.BorderSizePixel = 0
+
+    b.MouseButton1Click:Connect(function()
+        local lower = name:lower()
+        if AlvosSelecionados[lower] then
+            AlvosSelecionados[lower] = nil
+            b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        else
+            AlvosSelecionados[lower] = true
+            b.TextColor3 = Color3.fromRGB(0, 255, 127)
+            b.BackgroundColor3 = Color3.fromRGB(20, 50, 35)
+        end
+
+        local count = 0
+        for _ in pairs(AlvosSelecionados) do count = count + 1 end
+        Title.Text = count == 0 and "AUTO FARM INFINITO" or count .. " BRAINROT(S)"
+    end)
+end
+
+-- // LABEL MUTAÇÕES
+local LabelMut = Instance.new("TextLabel", Main)
+LabelMut.Size = UDim2.new(0.92, 0, 0, 20)
+LabelMut.Position = UDim2.new(0.04, 0, 0, 262)
+LabelMut.Text = "MUTAÇÕES:"
+LabelMut.TextColor3 = Color3.fromRGB(0, 255, 127)
+LabelMut.BackgroundTransparency = 1
+LabelMut.Font = Enum.Font.GothamBold
+LabelMut.TextSize = 13
+LabelMut.TextXAlignment = Enum.TextXAlignment.Left
+
+-- // LISTA MUTAÇÕES
+local ListMut = Instance.new("ScrollingFrame", Main)
+ListMut.Size = UDim2.new(0.92, 0, 0, 110)
+ListMut.Position = UDim2.new(0.04, 0, 0, 284)
+ListMut.CanvasSize = UDim2.new(0, 0, 0, #Mutacoes * 32)
+ListMut.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+ListMut.ScrollBarThickness = 4
+ListMut.BorderSizePixel = 0
+Instance.new("UICorner", ListMut)
+Instance.new("UIListLayout", ListMut)
+
+local MutCores = {
+    ["Ouro"] = Color3.fromRGB(255, 200, 0),
+    ["Diamante"] = Color3.fromRGB(100, 200, 255),
+    ["Rainbow"] = Color3.fromRGB(255, 100, 200),
+    ["Galaxy"] = Color3.fromRGB(180, 100, 255),
+}
+
+for _, name in ipairs(Mutacoes) do
+    local b = Instance.new("TextButton", ListMut)
+    b.Size = UDim2.new(1, 0, 0, 32)
+    b.Text = name
+    b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+    b.Font = Enum.Font.GothamBold
+    b.TextSize = 14
+    b.BorderSizePixel = 0
+
+    b.MouseButton1Click:Connect(function()
+        local lower = name:lower()
+        if MutacoesSelecionadas[lower] then
+            MutacoesSelecionadas[lower] = nil
+            b.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        else
+            MutacoesSelecionadas[lower] = true
+            b.TextColor3 = MutCores[name]
+            b.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        end
+    end)
+end
+
+-- // ARRASTAR
 TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
-        dragTarget = Main
         dragStart = input.Position
         startPos = Main.Position
     end
@@ -151,38 +216,66 @@ TopBar.InputChanged:Connect(function(input)
         dragInput = input
     end
 end)
-
--- // ARRASTAR - MINI
-Mini.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragTarget = Mini
-        dragStart = input.Position
-        startPos = Mini.Position
-    end
-end)
-Mini.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
--- // MOVER
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging and dragTarget then
+    if input == dragInput and dragging then
         local delta = input.Position - dragStart
-        dragTarget.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = false
-        dragTarget = nil
+    end
+end)
+
+-- // BUSCA PROMPT
+local function FindPromptDoAlvo()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local nomeObj = (obj.Parent and obj.Parent.Name or ""):lower()
+            local textoPrompt = (obj.ObjectText or ""):lower()
+            for alvo in pairs(AlvosSelecionados) do
+                if nomeObj:find(alvo) or textoPrompt:find(alvo) then
+                    -- checa mutação se tiver selecionada
+                    if next(MutacoesSelecionadas) ~= nil then
+                        for mut in pairs(MutacoesSelecionadas) do
+                            if nomeObj:find(mut) or textoPrompt:find(mut) then
+                                return obj
+                            end
+                        end
+                    else
+                        return obj
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- // LOOP PRINCIPAL
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if not FarmAtivo or next(AlvosSelecionados) == nil then continue end
+
+        local prompt = FindPromptDoAlvo()
+        if not prompt then continue end
+
+        local item = prompt.Parent
+        local targetPart = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+        if not targetPart then continue end
+
+        local char = LocalPlayer.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+
+        pcall(function()
+            hrp.CFrame = targetPart.CFrame * CFrame.new(0, 2, 0)
+            task.wait(0.05)
+            prompt.HoldDuration = 0
+            fireproximityprompt(prompt)
+            task.wait(0.2)
+        end)
     end
 end)
